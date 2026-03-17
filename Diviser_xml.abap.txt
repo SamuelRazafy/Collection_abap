@@ -1,0 +1,222 @@
+*&---------------------------------------------------------------------*
+*&      Form  F_XML_BATCH
+*&---------------------------------------------------------------------*
+*       Génération XML par lots de 100 PO - compatible NW 7.01 / EHP4
+*----------------------------------------------------------------------*
+FORM f_xml_batch
+  USING    p_batch_size TYPE i DEFAULT 100.
+
+  DATA: lt_po_batch     LIKE gt_po,
+        ls_po           LIKE LINE OF gt_po,
+        lv_tabix        TYPE sy-tabix,
+        lv_lines        TYPE i,
+        lv_total_lines  TYPE i,
+        lv_batch_number TYPE i VALUE 0,
+        lv_file_path    TYPE string.
+
+  REFRESH lt_po_batch.
+  lv_batch_number = 1.
+
+  DESCRIBE TABLE gt_po LINES lv_total_lines.
+
+  LOOP AT gt_po INTO ls_po.
+    lv_tabix = sy-tabix.
+
+    APPEND ls_po TO lt_po_batch.
+
+    DESCRIBE TABLE lt_po_batch LINES lv_lines.
+
+    IF lv_lines = p_batch_size
+    OR lv_tabix = lv_total_lines.
+
+      PERFORM generate_xml_one_batch
+        USING    lt_po_batch
+                 lv_batch_number
+        CHANGING lv_file_path.
+
+      REFRESH lt_po_batch.
+      ADD 1 TO lv_batch_number.
+    ENDIF.
+
+  ENDLOOP.
+
+  " Dernier lot (s'il reste des lignes)
+  DESCRIBE TABLE lt_po_batch LINES lv_lines.
+  IF lv_lines > 0.
+    PERFORM generate_xml_one_batch
+      USING    lt_po_batch
+               lv_batch_number
+      CHANGING lv_file_path.
+  ENDIF.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  GENERATE_XML_ONE_BATCH
+*&---------------------------------------------------------------------*
+FORM generate_xml_one_batch
+  USING    pt_po_batch    LIKE gt_po
+           pv_batch_number TYPE i
+  CHANGING pv_file_path   TYPE string.
+
+  DATA: lv_xml         TYPE string,
+        lv_date        TYPE char10,
+        lv_time        TYPE char8,
+        lv_time_clean  TYPE char8,
+        lv_timestamp   TYPE char30,
+        lv_filename    TYPE string,
+        lv_msg         TYPE string,
+        lv_batch_text  TYPE char10,
+        ls_po          LIKE LINE OF pt_po_batch,
+        ls_item        LIKE LINE OF ls_po-items.
+
+  CLEAR lv_xml.
+
+  " Entête XML
+  CONCATENATE
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    cl_abap_char_utilities=>newline
+    '<PurchaseOrders>'
+    cl_abap_char_utilities=>newline
+  INTO lv_xml.
+
+  LOOP AT pt_po_batch INTO ls_po.
+
+    CONCATENATE lv_xml
+      '  <PurchaseOrder>'
+      cl_abap_char_utilities=>newline
+    INTO lv_xml.
+
+    CONCATENATE lv_xml
+      '  <Header>'
+      cl_abap_char_utilities=>newline
+    INTO lv_xml.
+
+    PERFORM build_tag USING 'EBELN' ls_po-header-ebeln  CHANGING lv_xml.
+    PERFORM build_tag USING 'BUKRS' ls_po-header-bukrs  CHANGING lv_xml.
+    PERFORM build_tag USING 'BSART' ls_po-header-bsart  CHANGING lv_xml.
+    PERFORM build_tag USING 'STATU' ls_po-header-statu  CHANGING lv_xml.
+    PERFORM build_tag USING 'AEDAT' ls_po-header-aedat  CHANGING lv_xml.
+    PERFORM build_tag USING 'BEDAT' ls_po-header-bedat  CHANGING lv_xml.
+    PERFORM build_tag USING 'LIFNR' ls_po-header-lifnr  CHANGING lv_xml.
+    PERFORM build_tag USING 'NAME1' ls_po-header-name1  CHANGING lv_xml.
+    PERFORM build_tag USING 'EKORG' ls_po-header-ekorg  CHANGING lv_xml.
+    PERFORM build_tag USING 'EKGRP' ls_po-header-ekgrp  CHANGING lv_xml.
+    PERFORM build_tag USING 'WAERS' ls_po-header-waers  CHANGING lv_xml.
+
+    CONCATENATE lv_xml
+      '  </Header>'
+      cl_abap_char_utilities=>newline
+    INTO lv_xml.
+
+    CONCATENATE lv_xml
+      '  <Items>'
+      cl_abap_char_utilities=>newline
+    INTO lv_xml.
+
+    LOOP AT ls_po-items INTO ls_item.
+
+      CONCATENATE lv_xml
+        '    <Item>'
+        cl_abap_char_utilities=>newline
+      INTO lv_xml.
+
+      PERFORM build_tag USING 'EBELP' ls_item-ebelp          CHANGING lv_xml.
+      PERFORM build_tag USING 'MATNR' ls_item-matnr          CHANGING lv_xml.
+      PERFORM build_tag USING 'MAKTX' ls_item-maktx          CHANGING lv_xml.
+      PERFORM build_tag USING 'WERKS' ls_item-werks          CHANGING lv_xml.
+      PERFORM build_tag USING 'LGORT' ls_item-lgort          CHANGING lv_xml.
+      PERFORM build_tag USING 'MATKL' ls_item-matkl          CHANGING lv_xml.
+      PERFORM build_tag USING 'INFNR' ls_item-infnr          CHANGING lv_xml.
+      PERFORM build_tag USING 'MENGE' ls_item-menge          CHANGING lv_xml.
+      PERFORM build_tag USING 'MEINS' ls_item-meins          CHANGING lv_xml.
+      PERFORM build_tag USING 'BPRME' ls_item-bprme          CHANGING lv_xml.
+      PERFORM build_tag USING 'NETPR' ls_item-netpr          CHANGING lv_xml.
+      PERFORM build_tag USING 'PEINH' ls_item-peinh          CHANGING lv_xml.
+      PERFORM build_tag USING 'IDNLF' ls_item-idnlf          CHANGING lv_xml.
+
+      PERFORM build_tag USING 'KOSTL' ls_item-kostl          CHANGING lv_xml.
+      PERFORM build_tag USING 'AUFNR' ls_item-aufnr          CHANGING lv_xml.
+      PERFORM build_tag USING 'SAKTO' ls_item-sakto          CHANGING lv_xml.
+      PERFORM build_tag USING 'FKBER' ls_item-fkber          CHANGING lv_xml.
+      PERFORM build_tag USING 'GEBER' ls_item-geber          CHANGING lv_xml.
+      PERFORM build_tag USING 'FISTL' ls_item-fistl          CHANGING lv_xml.
+      PERFORM build_tag USING 'VPROZ' ls_item-vproz          CHANGING lv_xml.
+
+      PERFORM build_tag USING 'KSCHL' ls_item-kschl          CHANGING lv_xml.
+      PERFORM build_tag USING 'KWERT' ls_item-kwert          CHANGING lv_xml.
+
+      PERFORM build_tag USING 'TotalGRQuantity'          ls_item-gr_qty         CHANGING lv_xml.
+      PERFORM build_tag USING 'TotalInvoicedQuantity'    ls_item-iv_qty         CHANGING lv_xml.
+      PERFORM build_tag USING 'RemainingQuantityToInvoice' ls_item-qty_remaining CHANGING lv_xml.
+
+      PERFORM build_tag USING 'TotalGRAmount'            ls_item-gr_amt         CHANGING lv_xml.
+      PERFORM build_tag USING 'TotalInvoicedAmount'      ls_item-iv_amt         CHANGING lv_xml.
+      PERFORM build_tag USING 'RemainingAmountToInvoice' ls_item-amt_remaining  CHANGING lv_xml.
+
+      CONCATENATE lv_xml
+        '    </Item>'
+        cl_abap_char_utilities=>newline
+      INTO lv_xml.
+
+    ENDLOOP.   " fin items
+
+    CONCATENATE lv_xml
+      '  </Items>'
+      cl_abap_char_utilities=>newline
+    INTO lv_xml.
+
+    CONCATENATE lv_xml
+      '  </PurchaseOrder>'
+      cl_abap_char_utilities=>newline
+    INTO lv_xml.
+
+  ENDLOOP.   " fin PO
+
+  " Fermeture racine
+  CONCATENATE lv_xml
+    '</PurchaseOrders>'
+  INTO lv_xml.
+
+  " ───────────────────────────────────────────────
+  " Construction nom de fichier
+  " ───────────────────────────────────────────────
+  WRITE sy-datum TO lv_date DD/MM/YYYY.
+  WRITE sy-uzeit TO lv_time USING EDIT MASK '__:__:__'.
+  lv_time_clean = lv_time.
+  REPLACE ALL OCCURRENCES OF ':' IN lv_time_clean WITH '-'.
+
+  CONCATENATE lv_date lv_time_clean
+         INTO lv_timestamp SEPARATED BY '_'.
+
+  " Conversion numéro de lot → texte
+  WRITE pv_batch_number TO lv_batch_text LEFT-JUSTIFIED NO-ZERO.
+  CONDENSE lv_batch_text NO-GAPS.
+
+  CONCATENATE 'Commande_' lv_timestamp
+              '_part' lv_batch_text
+              '.xml'
+         INTO lv_filename RESPECTING BLANKS.
+
+  CONCATENATE gv_dir lv_filename INTO pv_file_path RESPECTING BLANKS.
+
+  " ───────────────────────────────────────────────
+  " Sauvegarde sur le serveur d'application (AL11)
+  " ───────────────────────────────────────────────
+  OPEN DATASET pv_file_path
+    FOR OUTPUT
+    IN TEXT MODE
+    ENCODING DEFAULT
+    MESSAGE lv_msg.
+
+  IF sy-subrc = 0.
+    TRANSFER lv_xml TO pv_file_path.
+    CLOSE DATASET pv_file_path.
+    WRITE: / 'Fichier créé :', pv_file_path COLOR COL_POSITIVE.
+  ELSE.
+    WRITE: / 'Erreur lors de la création du fichier', pv_file_path,
+           / 'Message :', lv_msg COLOR COL_NEGATIVE.
+  ENDIF.
+
+ENDFORM.
