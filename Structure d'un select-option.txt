@@ -1,0 +1,7 @@
+Structure d'un select-option:
+
+composante	type composante		type de données		log.		desc
+SIGN		char1			char			1
+OPTION 		char2			char			2
+LOW		MATNR			char			18
+HIGH		MATNR			char			18
