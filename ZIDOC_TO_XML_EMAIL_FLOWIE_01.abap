@@ -322,3 +322,11 @@ FUNCTION zidoc_to_xml_email_flowie_01.
   ENDTRY.
 
 ENDFUNCTION.
+
+----------------------------------------------------------------------------
+
+Structure : ZSD_STR_DOCNUM
+
+MANDT	MANDT	CLNT	3	0	Mandant
+DOCNUM	EDI_DOCNUM	NUMC	16	0	Numéro de l'IDoc
+
